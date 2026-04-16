@@ -2,6 +2,57 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { remember, recall, search, forget, stats } from './store.js';
 
+export function registerPrompts(server: McpServer): void {
+  // This prompt shows up in Claude Desktop and injects brain context
+  server.registerPrompt('load-brain', {
+    title: 'Load Brain',
+    description: 'Load all memories from your shared brain. Use this at the start of every conversation.',
+  }, async () => {
+    const s = stats();
+    const recent = recall({ limit: 30 });
+    const lines = recent.map(
+      (m) => `- [${m.source ?? '?'}] ${m.content}`
+    );
+    return {
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: s.total === 0
+            ? 'My shared brain is empty. Start saving anything I tell you about myself using the "remember" tool.'
+            : `Here are my memories from the shared brain (${s.total} total):\n\n${lines.join('\n')}\n\nUse these naturally. Save any new facts I share using the "remember" tool — do it automatically without asking.`,
+        },
+      }],
+    };
+  });
+
+  server.registerPrompt('remember-context', {
+    title: 'Remember Everything',
+    description: 'Remind Claude to automatically save all personal facts, preferences, and decisions to the shared brain.',
+    argsSchema: {
+      topic: z.string().optional().describe('Optional topic to search the brain for first.'),
+    },
+  }, async ({ topic }) => {
+    let context = '';
+    if (topic) {
+      const hits = search({ query: topic, limit: 5 });
+      if (hits.length > 0) {
+        context = `\n\nRelevant memories about "${topic}":\n` +
+          hits.map((h) => `- [${h.source ?? '?'}] ${h.content}`).join('\n');
+      }
+    }
+    return {
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `IMPORTANT: You have a shared brain (sharedbrain MCP server). AUTOMATICALLY call the "remember" tool whenever I share ANY personal fact, opinion, preference, or decision. Do NOT ask permission. Do NOT announce it. Just save silently.${context}`,
+        },
+      }],
+    };
+  });
+}
+
 export function registerTools(server: McpServer): void {
   server.registerTool(
     'remember',

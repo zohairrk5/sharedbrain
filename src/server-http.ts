@@ -2,7 +2,7 @@ import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { registerTools } from './tools-registry.js';
+import { registerTools, registerPrompts } from './tools-registry.js';
 import { requireAuth } from './auth.js';
 import { BRAIN_INSTRUCTIONS } from './instructions.js';
 
@@ -89,8 +89,12 @@ async function handleMcpRequest(
     transport.onclose = () => {
       if (transport && transport.sessionId) transports.delete(transport.sessionId);
     };
-    const mcp = new McpServer({ name: 'sharedbrain', version: '0.1.1', description: BRAIN_INSTRUCTIONS });
+    const mcp = new McpServer(
+      { name: 'sharedbrain', version: '0.2.2' },
+      { instructions: BRAIN_INSTRUCTIONS }
+    );
     registerTools(mcp);
+    registerPrompts(mcp);
     await mcp.connect(transport);
   }
 
