@@ -4,6 +4,7 @@ import { runHttpServer } from './server-http.js';
 import { runInstall } from './install.js';
 import { createToken, listTokens, revokeToken } from './tokens.js';
 import { search, stats } from './store.js';
+import { hookSessionStart, hookUserPrompt, hookPostTool } from './hooks.js';
 
 type Args = Record<string, string | boolean>;
 
@@ -150,6 +151,25 @@ async function main(): Promise<void> {
       for (const [src, n] of Object.entries(s.sources)) {
         console.log(`  ${src}: ${n}`);
       }
+      return;
+    }
+
+    case 'hook': {
+      const hookName = positionals[0];
+      if (hookName === 'session-start') {
+        await hookSessionStart();
+        return;
+      }
+      if (hookName === 'prompt') {
+        await hookUserPrompt();
+        return;
+      }
+      if (hookName === 'post-tool') {
+        await hookPostTool();
+        return;
+      }
+      console.error('Usage: sharedbrain hook <session-start|prompt|post-tool>');
+      process.exit(1);
       return;
     }
 

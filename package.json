@@ -1,6 +1,6 @@
 {
   "name": "sharedbrain",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "A shared memory brain for Claude across Claude Code, Claude Desktop, and any MCP-capable surface. One SQLite store, four tools, zero config.",
   "keywords": [
     "claude",

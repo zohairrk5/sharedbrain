@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, join } from 'node:path';
 import { execSync } from 'node:child_process';
+import { homedir } from 'node:os';
 import { claudeDesktopConfigPath } from './paths.js';
 
 function log(msg: string): void {
@@ -25,22 +26,78 @@ function wireClaudeCode(node: string, script: string): void {
     return;
   }
   try {
-    execSync('claude mcp list', { stdio: 'ignore' });
     const listOut = execSync('claude mcp list').toString();
     if (listOut.includes('sharedbrain')) {
-      log('Claude Code already has sharedbrain registered — skipping.');
-      return;
+      log('Claude Code MCP already registered — skipping MCP.');
+    } else {
+      execSync(`claude mcp add sharedbrain -s user -- "${node}" "${script}" serve`, {
+        stdio: 'inherit',
+      });
+      log('Wired MCP server into Claude Code (user scope).');
     }
   } catch {
-    // ignore; proceed to add
+    try {
+      execSync(`claude mcp add sharedbrain -s user -- "${node}" "${script}" serve`, {
+        stdio: 'inherit',
+      });
+      log('Wired MCP server into Claude Code (user scope).');
+    } catch (err) {
+      log(`Failed to wire Claude Code MCP: ${(err as Error).message}`);
+    }
   }
-  try {
-    execSync(`claude mcp add sharedbrain -s user -- "${node}" "${script}" serve`, {
-      stdio: 'inherit',
+}
+
+function wireClaudeCodeHooks(node: string, script: string): void {
+  const settingsPath = join(homedir(), '.claude', 'settings.json');
+  const settingsDir = dirname(settingsPath);
+
+  if (!existsSync(settingsDir)) {
+    mkdirSync(settingsDir, { recursive: true });
+  }
+
+  let settings: Record<string, unknown> = {};
+  if (existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    } catch {
+      log(`Could not parse ${settingsPath}. Backing up.`);
+      writeFileSync(`${settingsPath}.bak.${Date.now()}`, readFileSync(settingsPath, 'utf8'));
+      settings = {};
+    }
+  }
+
+  const hooks = (settings.hooks as Record<string, unknown[]> | undefined) ?? {};
+  const cmd = (hookType: string) => `${node} ${script} hook ${hookType}`;
+  let changed = false;
+
+  // SessionStart hook — loads memories at session start
+  const sessionStartHooks = (hooks.SessionStart as Array<Record<string, unknown>> | undefined) ?? [];
+  if (!sessionStartHooks.some((h) => String(h.command ?? '').includes('sharedbrain'))) {
+    sessionStartHooks.push({
+      command: cmd('session-start'),
+      timeout: 10000,
     });
-    log('Wired into Claude Code (user scope).');
-  } catch (err) {
-    log(`Failed to wire Claude Code: ${(err as Error).message}`);
+    hooks.SessionStart = sessionStartHooks;
+    changed = true;
+  }
+
+  // UserPromptSubmit hook — searches brain with user's prompt for relevant context
+  const promptHooks = (hooks.UserPromptSubmit as Array<Record<string, unknown>> | undefined) ?? [];
+  if (!promptHooks.some((h) => String(h.command ?? '').includes('sharedbrain'))) {
+    promptHooks.push({
+      command: cmd('prompt'),
+      timeout: 5000,
+    });
+    hooks.UserPromptSubmit = promptHooks;
+    changed = true;
+  }
+
+  if (changed) {
+    settings.hooks = hooks;
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    log(`Registered hooks in ${settingsPath} (SessionStart + UserPromptSubmit).`);
+  } else {
+    log('Claude Code hooks already registered — skipping.');
   }
 }
 
@@ -80,15 +137,17 @@ export function runInstall(): void {
   log(`Using server script: ${script}`);
 
   wireClaudeCode(node, script);
+  wireClaudeCodeHooks(node, script);
   wireClaudeDesktop(node, script);
 
-  log('Done. Your shared brain is live in Claude Code + Claude Desktop.');
   log('');
-  log('Next: in any Claude surface, try:');
-  log('  "Remember that I prefer tabs over spaces"');
-  log('  "Search the brain for anything about fratOS"');
+  log('Done. Your shared brain is live.');
   log('');
-  log('To also expose your brain to claude.ai web / mobile, run:');
-  log('  sharedbrain serve-http --port 3000');
-  log('Then tunnel it with `cloudflared tunnel --url http://localhost:3000` and add the URL as a Custom Connector.');
+  log('What happens now:');
+  log('  - Claude Code: memories auto-load at session start, auto-search on every message');
+  log('  - Claude Desktop (Chat + Cowork): MCP tools available for memory');
+  log('  - All surfaces share the same ~/.sharedbrain/brain.db');
+  log('');
+  log('Restart Claude Desktop to pick up the MCP server.');
+  log('Claude Code picks it up on the next session.');
 }
