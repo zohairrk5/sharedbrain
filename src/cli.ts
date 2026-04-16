@@ -7,15 +7,15 @@ import { search, stats } from './store.js';
 
 type Args = Record<string, string | boolean>;
 
-function parseArgs(argv: string[]): { cmd: string; sub: string | null; args: Args; rest: string[] } {
-  const [cmd = 'help', sub = null, ...rest] = argv;
+function parseArgs(argv: string[]): { cmd: string; args: Args; positionals: string[] } {
+  const [cmd = 'help', ...rawRest] = argv;
   const parsed: Args = {};
-  const free: string[] = [];
-  for (let i = 0; i < rest.length; i++) {
-    const a = rest[i];
+  const positionals: string[] = [];
+  for (let i = 0; i < rawRest.length; i++) {
+    const a = rawRest[i];
     if (a.startsWith('--')) {
       const key = a.slice(2);
-      const next = rest[i + 1];
+      const next = rawRest[i + 1];
       if (next && !next.startsWith('--')) {
         parsed[key] = next;
         i++;
@@ -23,10 +23,10 @@ function parseArgs(argv: string[]): { cmd: string; sub: string | null; args: Arg
         parsed[key] = true;
       }
     } else {
-      free.push(a);
+      positionals.push(a);
     }
   }
-  return { cmd, sub, args: parsed, rest: free };
+  return { cmd, args: parsed, positionals };
 }
 
 function printHelp(): void {
@@ -57,7 +57,7 @@ Storage:  ~/.sharedbrain/brain.db
 }
 
 async function main(): Promise<void> {
-  const { cmd, sub, args, rest } = parseArgs(process.argv.slice(2));
+  const { cmd, args, positionals } = parseArgs(process.argv.slice(2));
 
   switch (cmd) {
     case 'install':
@@ -85,8 +85,9 @@ async function main(): Promise<void> {
     }
 
     case 'token': {
+      const sub = positionals[0];
       if (sub === 'create') {
-        const label = rest[0] ?? 'default';
+        const label = positionals[1] ?? 'default';
         const t = createToken(label);
         console.log(`Created token #${t.id} (${t.label}):`);
         console.log(`  ${t.token}`);
@@ -108,7 +109,7 @@ async function main(): Promise<void> {
         return;
       }
       if (sub === 'revoke') {
-        const id = Number(rest[0]);
+        const id = Number(positionals[1]);
         if (!id) {
           console.error('Usage: sharedbrain token revoke <id>');
           process.exit(1);
@@ -123,7 +124,7 @@ async function main(): Promise<void> {
     }
 
     case 'search': {
-      const query = rest[0];
+      const query = positionals[0];
       if (!query) {
         console.error('Usage: sharedbrain search "<query>"');
         process.exit(1);
