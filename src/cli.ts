@@ -40,8 +40,9 @@ Usage:
   sharedbrain serve
       Run the MCP server over stdio (used by Claude Code / Desktop).
 
-  sharedbrain serve-http [--port 3000] [--host 0.0.0.0] [--public-url https://...]
-      Run the MCP server over HTTPS-capable HTTP for claude.ai web / mobile.
+  sharedbrain serve-http [--port 3000] [--host 0.0.0.0] [--tunnel]
+      Run the MCP server over HTTP for claude.ai web / mobile.
+      --tunnel  Auto-create a public URL (no cloudflare/ngrok needed).
       Auth: uses SHAREDBRAIN_TOKEN env var or tokens created via 'sharedbrain token create'.
 
   sharedbrain token create <label>
@@ -81,7 +82,8 @@ async function main(): Promise<void> {
           console.error('[sharedbrain] Create one first: sharedbrain token create "my-laptop"');
         }
       }
-      await runHttpServer({ port, host, envToken, publicUrl });
+      const tunnel = args.tunnel === true;
+      await runHttpServer({ port, host, envToken, publicUrl, tunnel });
       return;
     }
 

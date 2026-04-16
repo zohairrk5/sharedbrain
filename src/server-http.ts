@@ -11,6 +11,7 @@ interface HttpServerOptions {
   host: string;
   envToken: string | null;
   publicUrl: string | null;
+  tunnel: boolean;
 }
 
 const transports = new Map<string, StreamableHTTPServerTransport>();
@@ -142,4 +143,22 @@ export async function runHttpServer(opts: HttpServerOptions): Promise<void> {
   }
   console.error('[sharedbrain] health check: /health');
   console.error('[sharedbrain] OAuth metadata: /.well-known/oauth-authorization-server');
+
+  if (opts.tunnel) {
+    try {
+      const localtunnel = (await import('localtunnel')).default;
+      const tunnel = await localtunnel({ port: opts.port });
+      console.error('');
+      console.error(`[sharedbrain] 🌐 Tunnel open: ${tunnel.url}/mcp`);
+      console.error(`[sharedbrain] Add this URL as a Custom Connector in claude.ai settings.`);
+      console.error('');
+      tunnel.on('close', () => {
+        console.error('[sharedbrain] Tunnel closed. Restarting...');
+        // localtunnel auto-reconnects, but log it
+      });
+    } catch (err) {
+      console.error(`[sharedbrain] Failed to open tunnel: ${(err as Error).message}`);
+      console.error('[sharedbrain] Install localtunnel: npm install -g localtunnel');
+    }
+  }
 }
