@@ -70,25 +70,32 @@ function wireClaudeCodeHooks(node: string, script: string): void {
   const cmd = (hookType: string) => `${node} ${script} hook ${hookType}`;
   let changed = false;
 
-  // SessionStart hook — loads memories at session start
-  const sessionStartHooks = (hooks.SessionStart as Array<Record<string, unknown>> | undefined) ?? [];
-  if (!sessionStartHooks.some((h) => String(h.command ?? '').includes('sharedbrain'))) {
-    sessionStartHooks.push({
-      command: cmd('session-start'),
-      timeout: 10000,
+  // Helper to check if any hook group already references sharedbrain
+  const hasSharedbrain = (groups: Array<Record<string, unknown>>): boolean =>
+    groups.some((g) => {
+      const inner = (g.hooks as Array<Record<string, unknown>> | undefined) ?? [];
+      return inner.some((h) => String(h.command ?? '').includes('sharedbrain'));
     });
-    hooks.SessionStart = sessionStartHooks;
+
+  // SessionStart hook — loads memories at session start
+  const sessionStartGroups = (hooks.SessionStart as Array<Record<string, unknown>> | undefined) ?? [];
+  if (!hasSharedbrain(sessionStartGroups)) {
+    sessionStartGroups.push({
+      matcher: '',
+      hooks: [{ type: 'command', command: cmd('session-start'), timeout: 10000 }],
+    });
+    hooks.SessionStart = sessionStartGroups;
     changed = true;
   }
 
   // UserPromptSubmit hook — searches brain with user's prompt for relevant context
-  const promptHooks = (hooks.UserPromptSubmit as Array<Record<string, unknown>> | undefined) ?? [];
-  if (!promptHooks.some((h) => String(h.command ?? '').includes('sharedbrain'))) {
-    promptHooks.push({
-      command: cmd('prompt'),
-      timeout: 5000,
+  const promptGroups = (hooks.UserPromptSubmit as Array<Record<string, unknown>> | undefined) ?? [];
+  if (!hasSharedbrain(promptGroups)) {
+    promptGroups.push({
+      matcher: '',
+      hooks: [{ type: 'command', command: cmd('prompt'), timeout: 5000 }],
     });
-    hooks.UserPromptSubmit = promptHooks;
+    hooks.UserPromptSubmit = promptGroups;
     changed = true;
   }
 
