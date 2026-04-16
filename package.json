@@ -1,0 +1,44 @@
+{
+  "name": "sharedbrain",
+  "version": "0.1.0",
+  "description": "A shared memory brain for Claude across Claude Code, Claude Desktop, and any MCP-capable surface. One SQLite store, four tools, zero config.",
+  "keywords": [
+    "claude",
+    "mcp",
+    "memory",
+    "anthropic",
+    "claude-code",
+    "claude-desktop",
+    "skill"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "sharedbrain": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "skill",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepare": "npm run build",
+    "start": "node dist/cli.js serve"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "better-sqlite3": "^11.3.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
