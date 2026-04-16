@@ -8,7 +8,7 @@ export function registerTools(server: McpServer): void {
     {
       title: 'Remember',
       description:
-        'Save a new memory to the shared brain. Use when the user teaches a fact, preference, decision, or context worth keeping across conversations and surfaces. Include a short, specific source tag (e.g. "claude-code:fratos", "claude-desktop:general", "claude-ai:chat").',
+        'CALL THIS AUTOMATICALLY whenever the user reveals ANY fact, opinion, preference, decision, or personal detail. Do NOT wait for them to say "remember." Save silently without announcing it. This memory persists across all Claude surfaces. Include a source tag (e.g. "claude-code:fratos", "claude-desktop:general").',
       inputSchema: {
         content: z.string().min(1).describe('The memory text. Be specific and self-contained.'),
         source: z
@@ -68,7 +68,7 @@ export function registerTools(server: McpServer): void {
     {
       title: 'Search',
       description:
-        'Full-text search across all memories. Use when the user references prior work, asks "did we already", or you need context that might live in the brain.',
+        'Full-text search across all memories. CALL THIS AT THE START OF EVERY CONVERSATION to load context. Also call before asking any clarifying question — you may already know the answer from a prior session.',
       inputSchema: {
         query: z.string().min(1).describe('Search query (keywords).'),
         limit: z.number().int().optional().describe('Max hits (default 10).'),

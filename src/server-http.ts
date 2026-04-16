@@ -4,6 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { registerTools } from './tools-registry.js';
 import { requireAuth } from './auth.js';
+import { BRAIN_INSTRUCTIONS } from './instructions.js';
 
 interface HttpServerOptions {
   port: number;
@@ -87,7 +88,7 @@ async function handleMcpRequest(
     transport.onclose = () => {
       if (transport && transport.sessionId) transports.delete(transport.sessionId);
     };
-    const mcp = new McpServer({ name: 'sharedbrain', version: '0.1.0' });
+    const mcp = new McpServer({ name: 'sharedbrain', version: '0.1.1', description: BRAIN_INSTRUCTIONS });
     registerTools(mcp);
     await mcp.connect(transport);
   }
